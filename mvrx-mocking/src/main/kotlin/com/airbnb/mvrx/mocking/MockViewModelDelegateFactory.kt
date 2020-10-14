@@ -12,8 +12,8 @@ import com.airbnb.mvrx.RealMavericksStateFactory
 import com.airbnb.mvrx.ViewModelContext
 import com.airbnb.mvrx.ViewModelDelegateFactory
 import com.airbnb.mvrx.ViewModelDoesNotExistException
-import com.airbnb.mvrx._fragmentArgsProvider
 import com.airbnb.mvrx.lifecycleAwareLazy
+import com.airbnb.mvrx._internal
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -38,7 +38,7 @@ class MockViewModelDelegateFactory(
         viewModelProvider: (stateFactory: MavericksStateFactory<VM, S>) -> VM
     ): Lazy<VM> where T : Fragment, T : MavericksView {
         check(configFactory == Mavericks.viewModelConfigFactory) {
-            "Config factory provided in constructor is not the same one as installed on MvRx object."
+            "Config factory provided in constructor is not the same one as initialized on Mavericks object."
         }
 
         // We lock  in the mockBehavior at the time that the Fragment is created (which is when the
@@ -69,24 +69,27 @@ class MockViewModelDelegateFactory(
                     mockBehavior
                 )
 
-                viewModel.apply { onEachInternal(fragment, action = { fragment.postInvalidate() }) }
-                    .also { vm ->
-                        if (mockState != null && mockBehavior.initialStateMocking == MockBehavior.InitialStateMocking.Full) {
-                            // Custom viewmodel factories can override initial state, so we also force state on the viewmodel
-                            // to be the expected mocked value after the ViewModel has been created.
-
-                            val stateStore =
-                                vm.config.stateStore as? MockableStateStore
-                                    ?: error("Expected a mockable state store for 'Full' mock behavior.")
-
-                            require(stateStore.mockBehavior.stateStoreBehavior == MockBehavior.StateStoreBehavior.Scriptable) {
-                                "Full mock state requires that the state store be set to scriptable to " +
-                                    "guarantee that state is frozen on the mock and not allowed to be changed by the view."
-                            }
-
-                            stateStore.next(mockState!!)
-                        }
+                viewModel.apply {
+                    if (mockBehavior.subscribeViewToStateUpdates) {
+                        _internal(fragment, action = { fragment.postInvalidate() })
                     }
+                }.also { vm ->
+                    if (mockState != null && mockBehavior.initialStateMocking == MockBehavior.InitialStateMocking.Full) {
+                        // Custom viewmodel factories can override initial state, so we also force state on the viewmodel
+                        // to be the expected mocked value after the ViewModel has been created.
+
+                        val stateStore =
+                            vm.config.stateStore as? MockableStateStore
+                                ?: error("Expected a mockable state store for 'Full' mock behavior.")
+
+                        require(stateStore.mockBehavior.stateStoreBehavior == MockBehavior.StateStoreBehavior.Scriptable) {
+                            "Full mock state requires that the state store be set to scriptable to " +
+                                "guarantee that state is frozen on the mock and not allowed to be changed by the view."
+                        }
+
+                        stateStore.next(mockState!!)
+                    }
+                }
             }
         }.also { viewModelDelegate ->
             if (fragment is MockableMavericksView) {
@@ -157,6 +160,9 @@ class MockViewModelDelegateFactory(
             viewModelProvider(stateFactory(mockState))
         }
     }
+
+    @Suppress("FunctionName")
+    private fun <T : Fragment> T._fragmentArgsProvider(): Any? = arguments?.get(Mavericks.KEY_ARG)
 
     private fun <S : MavericksState, T : MavericksView> getMockState(
         fragment: T,

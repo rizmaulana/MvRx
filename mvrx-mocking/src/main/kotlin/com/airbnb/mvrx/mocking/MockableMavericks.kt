@@ -1,12 +1,12 @@
 package com.airbnb.mvrx.mocking
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import com.airbnb.mvrx.Mavericks
 import com.airbnb.mvrx.MavericksViewModel
 import com.airbnb.mvrx.MavericksState
 import com.airbnb.mvrx.MavericksStateStore
 import com.airbnb.mvrx.ScriptableStateStore
-import com.airbnb.mvrx.isDebuggable
 import com.airbnb.mvrx.mocking.MockableMavericks.initialize
 import com.airbnb.mvrx.mocking.printer.MavericksMockPrinter
 import com.airbnb.mvrx.mocking.printer.MockPrinterConfiguration
@@ -30,8 +30,8 @@ object MockableMavericks {
     /**
      * Configuration for how mock state is printed.
      *
-     * The MvRx mocking system allows you to generate a reproduction of a ViewModel's state. For
-     * any [MavericksState] instance that a ViewModel has, MvRx can generate a file containing code
+     * The Mavericks mocking system allows you to generate a reproduction of a ViewModel's state. For
+     * any [MavericksState] instance that a ViewModel has, Mavericks can generate a file containing code
      * to completely reconstruct that state.
      *
      * This generated code can then be used to reconstruct States that can be used during testing.
@@ -62,7 +62,7 @@ object MockableMavericks {
     val mockConfigFactory: MockMavericksViewModelConfigFactory
         get() {
             return (Mavericks.viewModelConfigFactory as? MockMavericksViewModelConfigFactory)
-                ?: error("Expecting MockMvRxViewModelConfigFactory for config factory. Make sure you have called MvRxMocks#initialize")
+                ?: error("Expecting MockMavericksViewModelConfigFactory for config factory. Make sure you have called MockableMavericks#initialize")
         }
 
     /**
@@ -92,6 +92,8 @@ object MockableMavericks {
             context = context
         )
     }
+
+    private fun Context.isDebuggable(): Boolean = (0 != (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE))
 
     /**
      * Initializes the required [Mavericks.viewModelConfigFactory] and sets ViewModel debug and mock behavior for the app.
